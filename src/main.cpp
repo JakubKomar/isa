@@ -5,8 +5,22 @@
  */
 #include "main.hpp"
 
-int main() 
+int main(int argc, char *argv[]) 
 {
-    std::cout << "Hello World!";
+    try
+    {
+        popClient client(argc,argv);
+    }
+    catch(const std::invalid_argument& e)
+    {
+        cerr << e.what()<<"\ninvalid argument - try -h" << '\n';
+        return 1;
+    }
+    catch (std::exception &ex) 
+    {
+        std::cout << "Runtime err: "<< ex.what() << "\n";
+    }
+    
+    
     return 0;
 }

@@ -4,3 +4,6 @@
  * @authors Jakub Komárek (xkomar33)
  */
 #include <iostream>
+#include "arpa/inet.h"
+#include "popClient.hpp"
+
