@@ -5,11 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "g++ - Sestavit a ladit aktivní soubor",
+            "name": "g++-9 - Sestavit a ladit aktivní soubor",
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/popcl",
-            "args": ["-h","-p"],
+            "args": ["mail.local","-o","out.txt","-a","./../login.txt"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
@@ -22,7 +22,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "C/C++: g++ sestavit aktivní soubor",
+            "preLaunchTask": "C/C++: g++-9 sestavit aktivní soubor",
             "miDebuggerPath": "/usr/bin/gdb"
         }
     ]

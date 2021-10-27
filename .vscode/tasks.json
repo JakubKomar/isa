@@ -2,14 +2,14 @@
     "tasks": [
         {
             "type": "cppbuild",
-            "label": "C/C++: g++ sestavit aktivní soubor",
-            "command": "/usr/bin/g++",
+            "label": "C/C++: g++-9 sestavit aktivní soubor",
+            "command": "/usr/bin/g++-9",
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
-                "${fileDirname}/*.cpp",
+                "*.cpp",
                 "-o",
-                "popcl"
+                "${fileDirname}/popcl"
             ],
             "options": {
                 "cwd": "${fileDirname}"

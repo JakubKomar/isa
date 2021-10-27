@@ -64,6 +64,71 @@ popClient::popClient(int argc, char **argv)
     init();
 }
 
+void popClient::estConnection()
+{
+    initSocket();
+    secureConnection();
+}
+
+void popClient::secureConnection()
+{
+    SSL_CTX *ctx;
+    if(this->flagS)
+    {
+        ctx=SSL_CTX_new(TLS_client_method());
+    }
+    else
+        {}
+}
+
+
+
+void popClient::nonSecure()
+{
+
+}
+
+void popClient::initSocket()
+{ 
+    struct hostent *server=gethostbyname(this->server.c_str()); //nalezení aliasu ke jménu
+    if (server == NULL) 
+    {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+
+    printf( "%s ", inet_ntoa( *( struct in_addr*)( server -> h_addr_list[0])));    //kontrolní výpis adresy z aliasu
+    
+    struct sockaddr_in serv_addr;       //adresa,port,..
+    serv_addr.sin_family = AF_INET;     //ipv4 format
+    serv_addr.sin_port = htons(this->port);//převod portu na float
+    serv_addr.sin_addr= *( struct in_addr*)( server -> h_addr_list[0]); //ip adresa
+
+    this->sock = socket(AF_INET, SOCK_STREAM, 0); //inicializace soketu
+    if (sock < 0)
+    {
+        std::cerr << "Error: socket cration failed" << std::endl;
+        exit(1);
+    }
+
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    {
+        printf("\nConnection Failed \n");
+        close(sock);
+        exit(1);
+    }
+
+    char *hello = "Hello from client";
+    char buffer[1024] = {0};
+    int valread;
+
+    send(this->sock , hello , strlen(hello) , 0 );
+    printf("Hello message sent\n");
+    valread = read(this->sock , buffer, 1024);
+    printf("%s\n",buffer );
+}   
+
+
 void popClient::init()
 {
     getLoginData();
@@ -79,8 +144,6 @@ void popClient::getLoginData()
         if (regex_match (aux, regex("^username *= *[!-~]* *$")))
         {
             smatch m; 
-   
-            // regex_search that searches pattern regexp in the string mystr  
             regex_search(aux, m, regex("[!-~]* *$")); 
             aux=m[0];
             regex_search(aux, m, regex("[!-~]*"));  
@@ -92,8 +155,6 @@ void popClient::getLoginData()
         if (regex_match (aux, regex("^password *= *[!-~]* *$")))
         {
             smatch m; 
-   
-            // regex_search that searches pattern regexp in the string mystr  
             regex_search(aux, m, regex("[!-~]* *$")); 
             aux=m[0];
             regex_search(aux, m, regex("[!-~]*"));  
@@ -107,4 +168,9 @@ void popClient::getLoginData()
 }
 popClient::~popClient()
 {
+}
+void error(const char *msg)
+{
+    perror(msg);
+    exit(0);
 }

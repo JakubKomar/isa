@@ -10,6 +10,7 @@ int main(int argc, char *argv[])
     try
     {
         popClient client(argc,argv);
+        client.estConnection();
     }
     catch(const std::invalid_argument& e)
     {
@@ -20,7 +21,6 @@ int main(int argc, char *argv[])
     {
         std::cout << "Runtime err: "<< ex.what() << "\n";
     }
-    
     
     return 0;
 }
