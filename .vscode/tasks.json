@@ -10,6 +10,8 @@
                 "*.cpp",
                 "-o",
                 "${fileDirname}/popcl"
+
+                ,"-lssl" ,"-lcrypto"
             ],
             "options": {
                 "cwd": "${fileDirname}"

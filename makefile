@@ -17,7 +17,7 @@ build:
 	if [ -d "build" ]; then rm -r build; fi && \
 	mkdir build && \
 	cd build && \
-	$(CC) $(CFLAGS) -o $(BIN) $(PATHS) && \
+	$(CC) $(CFLAGS) -o $(BIN) $(PATHS) -lssl -lcrypto && \
 	cp $(BIN) ../
 
 pack: clean

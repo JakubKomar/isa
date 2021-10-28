@@ -11,6 +11,8 @@ int main(int argc, char *argv[])
     {
         popClient client(argc,argv);
         client.estConnection();
+        client.run();
+        client.cleanUp();
     }
     catch(const std::invalid_argument& e)
     {

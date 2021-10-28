@@ -15,12 +15,13 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include <unistd.h>
 #include <netdb.h>
-#include <resolv.h>
-#include <netdb.h>
 using namespace std;
+int countEol(char * text,int len);
+
 class popClient
 {
 private:
@@ -32,7 +33,7 @@ private:
 
     string server;
     bool flagP=false;
-    int port;
+    string port;
 
     bool flagT=false;
     bool flagS=false;
@@ -48,15 +49,24 @@ private:
     bool outFlag=false;
     string outDir;
 
-    int sock=0;
+    BIO *cbio, *out;
 
     void init();
+    void openSSLinit();
     void getLoginData();
-    void initSocket();
-    void nonSecure();
-    void secureConnection();
+    void nonSecureConnet();
+    void secureConnet();
+    void switchToSecure();
+    void logIn();
+    void strAddEnd(char *buffer,int wage);
+    void download();
+    int getMesCount();
+    void outDirInit();
+    void parseMessege();
 public:
     void estConnection();
+    void run();
     popClient(int argc, char **argv);
+    void cleanUp();
     ~popClient();
 };
