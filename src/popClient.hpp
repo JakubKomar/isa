@@ -1,3 +1,9 @@
+/**
+ * @brief  Pop 3 klient
+ *  klient pro stahování emailů ze serveru
+ * @authors Jakub Komárek (xkomar33)
+ */
+
 #include <string>
 #include <string.h>
 #include <stdio.h>
@@ -21,7 +27,6 @@
 #include <netdb.h>
 
 using namespace std;
-int countEol(char * text,int len);
 
 class popClient
 {
@@ -50,9 +55,11 @@ private:
     bool outFlag=false;
     string outDir;
 
-    BIO *cbio, *out;
+    char buffer[1024];
+    int buffSize=sizeof(buffer);
+    BIO *cbio;
 
-    char buff[1024];
+    int downCounter=0;
 
     void init();
     void openSSLinit();
@@ -61,16 +68,14 @@ private:
     void secureConnet();
     void switchToSecure();
     void logIn();
-    void strAddEnd(char *buffer,int wage);
     void download();
     string downloadMessege();
     int getMesCount();
     void outDirInit();
     void parseMessege(string messege);
-    void deleEndSeq(char * buff,int *received);
-
 public:
     void estConnection();
+    void writeResults();
     void run();
     popClient(int argc, char **argv);
     void cleanUp();

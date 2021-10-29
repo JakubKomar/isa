@@ -1,3 +1,9 @@
+/**
+ * @brief  Pop 3 klient
+ *  klient pro stahování emailů ze serveru
+ * @authors Jakub Komárek (xkomar33)
+ */
+
 #include "popClient.hpp"
 
 
@@ -66,27 +72,26 @@ popClient::popClient(int argc, char **argv)
 
 void popClient::logIn()
 {
-    char tmpbuf[1024];
-    int len = BIO_read(cbio, tmpbuf, 1024);strAddEnd(tmpbuf,len);
+    BIO_read(cbio, buffer, buffSize);
 
-    if (!regex_search (tmpbuf, regex("^[+]OK POP3")))
+    if (!regex_search (buffer, regex("^[+]OK POP3")))
         throw std::runtime_error("Chyba při komunikaci se serverem");
 
     
     BIO_puts(cbio,("user "+login+"\r\n").c_str()); 
-    len = BIO_read(cbio, tmpbuf, 1024); strAddEnd(tmpbuf,len);
+    BIO_read(cbio, buffer, buffSize);
 
 
-    if (!regex_search (tmpbuf, regex("^[+]OK")))
+    if (!regex_search (buffer, regex("^[+]OK")))
         throw std::runtime_error("Chyba při komunikaci se serverem");
 
 
     BIO_puts(cbio,("pass "+password+"\r\n").c_str());
-    len = BIO_read(cbio, tmpbuf, 1024); strAddEnd(tmpbuf,len);
+    BIO_read(cbio, buffer, buffSize);
 
-    if (regex_search (tmpbuf, regex("^[+]OK")))
+    if (regex_search (buffer, regex("^[+]OK")))
     {}
-    else if(regex_search (tmpbuf, regex("^[-]ERR")))
+    else if(regex_search (buffer, regex("^[-]ERR")))
     {
         throw std::runtime_error("Invalid user name or password.");
     }
@@ -114,24 +119,22 @@ void popClient::outDirInit()    //https://stackoverflow.com/questions/18100097/p
     }
 }
 
-
 void popClient::download()
 {
-    char buff[1024];
     int mCount= getMesCount();
 
     for(int i=1;i<=mCount;i++)
     {
-        snprintf(buff, sizeof(buff), "RETR %d\r\n",i);
-        BIO_puts(cbio,buff);
+        snprintf(buffer, buffSize, "RETR %d\r\n",i);
+        BIO_puts(cbio,buffer);
 
         string messege=downloadMessege();
         parseMessege(messege);
         if(this->delFlag)
         {         
-            snprintf(buff, sizeof(buff), "DELE %d\r\n",i);
-            BIO_puts(cbio,buff);
-            BIO_read(cbio,buff,sizeof(buff));
+            snprintf(buffer, buffSize, "DELE %d\r\n",i);
+            BIO_puts(cbio,buffer);
+            BIO_read(cbio,buffer,buffSize);
         }
     }
     BIO_puts(cbio,"QUIT\r\n");
@@ -139,15 +142,22 @@ void popClient::download()
 
 string popClient::downloadMessege()
 {
-    char buff[1024];
     string wholeMessege;
     string end="\r\n.\r\n";
     do
     {
-        int recieved=BIO_read(cbio,buff,sizeof(buff)); 
-        wholeMessege.append(buff,recieved);
+        int recieved=BIO_read(cbio,buffer,buffSize); 
+        wholeMessege.append(buffer,recieved);
     } while (!ends_with(wholeMessege,end));
     return wholeMessege;
+}
+
+void popClient::writeResults()
+{
+    cout<<"Staženo "<<this->downCounter;
+    if(this->newFlag)
+        cout<<" nových";
+    cout<<" zpráv.\n";
 }
 
 inline bool ends_with(std::string const & value, std::string const & ending)
@@ -195,39 +205,27 @@ void popClient::parseMessege(string messege)
     target<<messege;
     target.flush();
     target.close();
+    this->downCounter++;
 }
 
 int popClient::getMesCount()
 {
-    int messegeC=0;
-    char tmpbuf[1024];
     BIO_puts(cbio,"STAT\r\n");
-    int len = BIO_read(cbio, tmpbuf, 1024);
+    BIO_read(cbio, buffer, buffSize);
 
-    strAddEnd(tmpbuf,len);
-    cout<<tmpbuf;
-    if (regex_search (tmpbuf, regex("^[+]OK [0-9]+ [0-9]+")))
+    if (regex_search (buffer, regex("^[+]OK [0-9]+ [0-9]+")))
     {
         string aux;
-        aux.assign(tmpbuf);
+        aux.assign(buffer);
         smatch m; 
-        regex_search(aux, m, regex("[0-9]+")); ;
-        if(m.size()<1)
-        {//err
-        }
-        if(m.size()>=0)
+        if(regex_search(aux, m, regex("[0-9]+")))
             return stoi(m[0]);
+        else
+            throw std::runtime_error("Chyba při komunikaci se serverem");
     }
     else
-    {
-        //err
-    }
-    return 0;
-}
-
-void popClient::strAddEnd(char *buffer,int wage)
-{
-    buffer[wage]='\0';
+        throw std::runtime_error("Chyba při komunikaci se serverem");
+    return -1;
 }
 
 void popClient::run()
@@ -267,10 +265,7 @@ void popClient::nonSecureConnet()
 {
     cbio = BIO_new_connect((this->server+":"+this->port).c_str());
     if (BIO_do_connect(this->cbio) <= 0) {
-        fprintf(stderr, "Error connecting to server\n");
-        ERR_print_errors_fp(stderr);
-        cleanUp();
-        exit(1);
+        throw std::runtime_error("Server je nedostupný");
     }
 }
 
@@ -283,7 +278,6 @@ void popClient::secureConnet()
 {
     BIO *sbio, *out;
     int len;
-    char tmpbuf[1024];
     SSL_CTX *ctx;
     SSL *ssl;
 
@@ -326,10 +320,10 @@ void popClient::secureConnet()
 
     BIO_puts(sbio, "GET / HTTP/1.0\n\n");
     for ( ; ; ) {
-        len = BIO_read(sbio, tmpbuf, 1024);
+        len = BIO_read(sbio, buffer, buffSize);
         if (len <= 0)
             break;
-        BIO_write(out, tmpbuf, len);
+        BIO_write(out, buffer, len);
     }
 }
 

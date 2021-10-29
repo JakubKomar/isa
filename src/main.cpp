@@ -1,6 +1,6 @@
 /**
  * @brief   Pop3 client
- *
+ * klient pro stahování emailů ze serveru
  * @authors Jakub Komárek (xkomar33)
  */
 #include "main.hpp"
@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
         popClient client(argc,argv);
         client.estConnection();
         client.run();
+        client.writeResults();
         client.cleanUp();
     }
     catch(const std::invalid_argument& e)
