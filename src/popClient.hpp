@@ -19,6 +19,7 @@
 
 #include <unistd.h>
 #include <netdb.h>
+
 using namespace std;
 int countEol(char * text,int len);
 
@@ -51,6 +52,8 @@ private:
 
     BIO *cbio, *out;
 
+    char buff[1024];
+
     void init();
     void openSSLinit();
     void getLoginData();
@@ -60,9 +63,12 @@ private:
     void logIn();
     void strAddEnd(char *buffer,int wage);
     void download();
+    string downloadMessege();
     int getMesCount();
     void outDirInit();
-    void parseMessege();
+    void parseMessege(string messege);
+    void deleEndSeq(char * buff,int *received);
+
 public:
     void estConnection();
     void run();
@@ -70,3 +76,5 @@ public:
     void cleanUp();
     ~popClient();
 };
+
+inline bool ends_with(std::string const & value, std::string const & ending);

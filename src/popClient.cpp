@@ -4,7 +4,7 @@
 popClient::popClient(int argc, char **argv)
 {
     if(argc<2)
-        throw invalid_argument("Missing adress of server in arg");
+        throw invalid_argument("Nebyla zadána adresa serveru");
     else
     {
         if(!strcmp(argv[1],"-h"))
@@ -21,27 +21,27 @@ popClient::popClient(int argc, char **argv)
         if(!strcmp(argv[i],"-p"))
         {
             this->flagP=true;
-            (++i)<argc?this->port=argv[i]:throw invalid_argument("Missing port");
+            (++i)<argc?this->port=argv[i]:throw invalid_argument("Chybí port za argumentem -p");
         }
         else if(!strcmp(argv[i],"-C"))
         {
             this->flagC=true;
-            (++i)<argc?this->certFolder.assign(argv[i]):throw invalid_argument("Missing cert. folder");
+            (++i)<argc?this->certFolder.assign(argv[i]):throw invalid_argument("Chybí složka z certifikáty za argumentem -C");
         }
         else if(!strcmp(argv[i],"-a"))
         {
             this->flagA=true;
-            (++i)<argc?this->loginFile.assign(argv[i]):throw invalid_argument("Missing login/pass file");
+            (++i)<argc?this->loginFile.assign(argv[i]):throw invalid_argument("Chybí soubor s přihlašovacími údaji za argumentem -a");
         }
         else if(!strcmp(argv[i],"-o"))
         {
             this->outFlag=true;
-            (++i)<argc?this->outDir.assign(argv[i]):throw invalid_argument("Missing output folder");
+            (++i)<argc?this->outDir.assign(argv[i]):throw invalid_argument("Chybí složka do které se má nahrát výstup za argumentem -o");
         }
         else if((!strcmp(argv[i],"-T"))||(!strcmp(argv[i],"-S")))
         {
             if(this->flagT||this->flagS)
-                throw invalid_argument("Invalid combination of params -T and -S");
+                throw invalid_argument("Nevalidní kombinace parametů -T a -S");
             if(!strcmp(argv[i],"-T"))
                 this->flagT=true;
             else
@@ -50,22 +50,19 @@ popClient::popClient(int argc, char **argv)
         else if(!strcmp(argv[i],"-c"))
         {
             this->flagc=true;
-            (++i)<argc?this->certFile.assign(argv[i]):throw invalid_argument("Missing certificate file");
+            (++i)<argc?this->certFile.assign(argv[i]):throw invalid_argument("Chybí soubor s certiikáty za parametrem -c");
         }
         else if(!strcmp(argv[i],"-n"))
             this->newFlag=true;
         else if(!strcmp(argv[i],"-d"))
             this->delFlag=true;
         else
-            throw invalid_argument("Arg not recognize");
+            throw invalid_argument("Argumen nebyl rozpoznán");
     }
     if((!this->flagA)||(!this->outFlag))
-        throw invalid_argument("missing reguaired param/s");
+        throw invalid_argument("Chybí některý z povinných argumentů");
     init();
 }
-
-
-
 
 void popClient::logIn()
 {
@@ -73,37 +70,28 @@ void popClient::logIn()
     int len = BIO_read(cbio, tmpbuf, 1024);strAddEnd(tmpbuf,len);
 
     if (!regex_search (tmpbuf, regex("^[+]OK POP3")))
-    {
-        fprintf(stderr, "Pop 3 comunication error\n");
-        exit(1);
-    }
+        throw std::runtime_error("Chyba při komunikaci se serverem");
 
+    
     BIO_puts(cbio,("user "+login+"\r\n").c_str()); 
     len = BIO_read(cbio, tmpbuf, 1024); strAddEnd(tmpbuf,len);
 
+
     if (!regex_search (tmpbuf, regex("^[+]OK")))
-    {
-        fprintf(stderr, "Pop 3 comunication error\n");
-        exit(1);
-    }
+        throw std::runtime_error("Chyba při komunikaci se serverem");
+
 
     BIO_puts(cbio,("pass "+password+"\r\n").c_str());
     len = BIO_read(cbio, tmpbuf, 1024); strAddEnd(tmpbuf,len);
 
     if (regex_search (tmpbuf, regex("^[+]OK")))
-    {
-        cerr<<"login succes\n";
-    }
+    {}
     else if(regex_search (tmpbuf, regex("^[-]ERR")))
     {
-        fprintf(stderr, "Invalid user name or password.\n");
-        exit(1);
+        throw std::runtime_error("Invalid user name or password.");
     }
     else
-    {   
-        fprintf(stderr, "Pop 3 comunication error\n");
-        exit(1);
-    }
+        throw std::runtime_error("Chyba při komunikaci se serverem");
 }
 
 void popClient::outDirInit()    //https://stackoverflow.com/questions/18100097/portable-way-to-check-if-directory-exists-windows-linux-c
@@ -116,14 +104,12 @@ void popClient::outDirInit()    //https://stackoverflow.com/questions/18100097/p
         { 
             if (mkdir(this->outDir.c_str(),0) != 0)
             {
-                cerr<<"Cant create directory";
-                exit(-1);
+                throw std::runtime_error("Nelze vytvořit složku pro výstup");
             }
         } 
         else if (errno == ENOTDIR) 
         { 
-            cerr<<"somethig in path is not directory";
-            exit(-1);
+            throw std::runtime_error("Nelze přistoupit ke výstupní složce-něco v cestě není složka nebo nemáte dostatečné oprávnění pro přístup do této složky");
         } 
     }
 }
@@ -136,100 +122,79 @@ void popClient::download()
 
     for(int i=1;i<=mCount;i++)
     {
-        out= BIO_new_file(".temp","w");
-        if(out==NULL)
-            throw std::runtime_error("Temporary file cant be open");
         snprintf(buff, sizeof(buff), "RETR %d\r\n",i);
         BIO_puts(cbio,buff);
-        
 
+        string messege=downloadMessege();
+        parseMessege(messege);
+        if(this->delFlag)
+        {         
+            snprintf(buff, sizeof(buff), "DELE %d\r\n",i);
+            BIO_puts(cbio,buff);
+            BIO_read(cbio,buff,sizeof(buff));
+        }
+    }
+    BIO_puts(cbio,"QUIT\r\n");
+}
+
+string popClient::downloadMessege()
+{
+    char buff[1024];
+    string wholeMessege;
+    string end="\r\n.\r\n";
+    do
+    {
         int recieved=BIO_read(cbio,buff,sizeof(buff)); 
-        int eol=countEol(buff,recieved);
-        string aux;
-        int len=0;
-        aux.append(buff);
-        smatch m; 
-    
-        if (regex_search (aux,m, regex("[+]OK [0-9]+ octets")))
-        {
-            aux=m[0];
-            regex_search (aux,m, regex("[0-9]+"));
-            len=stoi(m[0]);
-        }
-        else
-            continue;
-        
-        
-        int j=recieved;
-        BIO_write(out,buff,recieved);
-        while(j<len)
-        {
-            recieved=BIO_read(cbio,buff,sizeof(buff));
-            BIO_write(out,buff,recieved);
-            j+=recieved;
-        }
-        BIO_free_all(out);
-        parseMessege();
-    }
+        wholeMessege.append(buff,recieved);
+    } while (!ends_with(wholeMessege,end));
+    return wholeMessege;
 }
 
-int countEol(char*  text,int len)
+inline bool ends_with(std::string const & value, std::string const & ending)
 {
-    int couter=0;
-    for( int i=0;i<len;i++)
-    {
-        if(text[i]=='\n'||text[i]=='\r')
-        {
-            couter++;
-        }
-    }
-    return couter;
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
-void popClient::parseMessege()
+void popClient::parseMessege(string messege)
 {
-    ifstream  file (".temp");
     string name;
-    if (file.is_open())
-    {
-        while(getline(file,name))
-        {
-            if (regex_search (name, regex("^Message-ID: *<[!-~]*>")))
-            {
-                smatch m; 
-                regex_search(name, m, regex("<[!-~]*>")); 
-                name=m[0];
-                name=name.substr(1,name.size()-2);
-                cout<<name<<"\n";
-                break;
-            }
-        } 
-    }
-    else 
-        throw std::runtime_error("Temp file opening fail");
-    if(!this->newFlag||(1)) //a zároveň záznam o zprávě neexistuje  
-    {
-        file.seekg(0);
-        string aux;
-        getline(file,aux);
+    smatch m; 
 
-        string path=this->outDir+'/'+name;
-        ofstream target(path.c_str());
-        if (!target.is_open())
+    std::istringstream iss(messege);
+
+    for (std::string line; std::getline(iss, line);)
+    {
+        if (regex_search (line,m, regex("^Message-ID: *<[!-~]*>")))
         {
-            cout<<"Target file opening fail";
-            file.close();
-            return;
+            name=m[0];
+            regex_search(name, m, regex("<[!-~]*>")); 
+            name=m[0];
+            name=name.substr(1,name.size()-2);
+            break;
         }
-        while(getline(file,aux))
-        {
-            target<<aux;
-        }
-        target.flush();
-        target.close();
     }
 
-    file.close();
+    string path=this->outDir+'/'+name;
+
+    if(this->newFlag) 
+    {
+        if( access( path.c_str(), F_OK ) == 0 ) 
+        {
+            return;        
+        }
+    }
+
+    ofstream target(path.c_str());
+    if (!target.is_open())
+    {
+        cerr<<"Email: "<<path<<" nelze otevřít pro zápis, pokračuji v práci.";
+        return;
+    }
+    messege.erase(0, messege.find("\n") + 1);
+    target<<messege;
+    target.flush();
+    target.close();
 }
 
 int popClient::getMesCount()
@@ -264,7 +229,6 @@ void popClient::strAddEnd(char *buffer,int wage)
 {
     buffer[wage]='\0';
 }
-
 
 void popClient::run()
 {
@@ -396,7 +360,7 @@ void popClient::getLoginData()
             this->login=m[0];
         }
         else
-            throw std::runtime_error("Login file in wrong format or damaged");
+            throw std::runtime_error("Soubor s přihlašujicími údaji je ve špatném formátu nebo je poškozený");
         getline(file,aux);
         if (regex_match (aux, regex("^password *= *[!-~]* *$")))
         {
@@ -407,10 +371,10 @@ void popClient::getLoginData()
             this->password=m[0];
         }
         else
-            throw std::runtime_error("Login file in wrong format or damaged");
+            throw std::runtime_error("Soubor s přihlašujicími údaji je ve špatném formátu nebo je poškozený");
     }
     else 
-        throw std::runtime_error("Login file cant be opened");
+        throw std::runtime_error("Soubor s přihlašujicími údaji nelze otevřít");
 }
 
 popClient::~popClient()
