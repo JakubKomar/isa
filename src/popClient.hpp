@@ -1,85 +1,167 @@
 /**
- * @brief  Pop 3 klient
- *  klient pro stahování emailů ze serveru
+ * @brief Pop3 klient s podporu tsl/ssl
+ * @details klient pro stahování emailů z POP3 serveru
  * @authors Jakub Komárek (xkomar33)
  */
 
-#include <string>
-#include <string.h>
-#include <stdio.h>
-#include <stdexcept>  
-#include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <string>
 #include <regex>
 
 #include <openssl/bio.h>
-#include <openssl/err.h>
-#include <openssl/pem.h>
 #include <openssl/ssl.h>
+#include <openssl/err.h>
 
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-
 #include <unistd.h>
-#include <netdb.h>
 
 using namespace std;
 
 class popClient
 {
 private:
-    string login;
+    //přihlašovací údaje
+    string login;   
     string password;
 
-    bool flagA=false;
+    //soubor z přihlašovacími údaji
     string loginFile;
+    bool flagA=false;
 
+    //adresa a port serveru
     string server;
-    bool flagP=false;
     string port;
+    bool flagP=false;
 
     bool flagT=false;
     bool flagS=false;
-    bool flagc=false;
+
+    //cesta k souboru s certifikáty
     string certFile;
+    bool flagc=false;
 
-    bool flagC=false;
+    //složka s certifikáty
     string certFolder;
+    bool flagC=false;
 
-    bool delFlag=false;
-    bool newFlag=false;
+    bool flagD=false;
+    bool flagN=false;
 
-    bool outFlag=false;
+    //cesta ke složce, do které se ukládají emaily
     string outDir;
+    bool flagO=false;
 
+    //buffer pro komunikaci se serverem
     char buffer[1024];
     int buffSize=sizeof(buffer);
+
+    //rozhraní pro komunikaci se serverem
     BIO *cbio;
 
+    //počítadlo stažených souborů
     int downCounter=0;
 
+    /**
+     * @brief inicializační funkce před hlavním během programu
+     */ 
     void init();
-    void openSSLinit();
-    void getLoginData();
-    void nonSecureConnet();
-    void secureConnet();
-    void switchToSecure();
-    void logIn();
-    void download();
-    string downloadMessege();
-    int getMesCount();
+
+    /**
+     * @brief inicializace vstupní složky-pokud neexistuje, vytvoříse
+     */ 
     void outDirInit();
+
+    /**
+     * @brief zíkává přihlašovací údaje ze souboru
+     */ 
+    void getLoginData();
+
+    /**
+     * @brief inicializace knihovny openSSL
+     */ 
+    void openSSLinit();
+
+    /**
+     * @brief Navázání nezabezpečeného spojení
+     */ 
+    void nonSecureConnet();
+
+    /**
+     * @brief Navázání zabezpečeného spojení
+     */ 
+    void secureConnet();
+
+    /**
+     * @brief Navázání nezabezpečeného spojení a přepnutí do šifrovaného
+     */ 
+    void switchToSecure();
+
+    /**
+     * @brief Autentizace na serveru pomocí loginu a hesla
+     */ 
+    void logIn();
+
+    /**
+     * @brief Získání počtu zpráv uložených na serveru
+     * @return počet zpráv na serveru
+     */ 
+    int getMesCount();
+
+    /**
+     * @brief stažení všech zpráv na serveru
+     */ 
+    void download();
+
+    /**
+     * @brief stažení jedné zprávy
+     * @return celá zpráva
+     */ 
+    string downloadMessege();
+
+    /**
+     * @brief zpracování zprávy a uložení do výstupní složky
+     * @param messege celá zpráva
+     */ 
     void parseMessege(string messege);
 public:
-    void estConnection();
-    void writeResults();
-    void run();
+
+    /**
+     * @brief Konstruktor-inicializuje se ze vstupních parametrů
+     */ 
     popClient(int argc, char **argv);
-    void cleanUp();
+
+    /**
+     * @brief Destruktor
+     */ 
     ~popClient();
+
+    /**
+     * @brief Navázání spojení se servrem
+     */ 
+    void estConnection();
+
+    /**
+     * @brief Hlavní běh programu-stažení všech zpráv
+     */ 
+    void run();
+
+    /**
+     * @brief Vypsání výsledků
+     */ 
+    void writeResults();
+
+    /**
+     * @brief Odalokace zdrojů
+     */ 
+    void cleanUp();
 };
 
+/**
+ * @brief kontroluje jestli se sufix shoduje z porovnávaným řetězcem
+ * funkce převzata z https://stackoverflow.com/a/2072890
+ * @param value porovnávaný string
+ * @param ending sufix
+ * @return true-shoduje se, false-neshoduje se
+*/ 
 inline bool ends_with(std::string const & value, std::string const & ending);
