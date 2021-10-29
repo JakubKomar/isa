@@ -401,9 +401,3 @@ void popClient::getLoginData()
 popClient::~popClient()
 {
 }
-
-void error(const char *msg)
-{
-	perror(msg);
-	exit(0);
-}

@@ -1,2 +1,31 @@
-ISA projekt 2021 - pop3 client
+ISA projekt 2021 - Pop3 klient s podporu tsl/ssl
 autor: Jakub Komárek (xkomar33)
+
+použití:
+popcl <server> [-p <port>] [-T|-S [-c <certfile>] [-C <certaddr>]] [-d] [-n] -a <auth_file> -o <out_dir>
+    <server> IP adresa/doménové jméno serveru.
+    -p <port> specifikuje číslo portuserveru. 
+    -T zapíná šifrování celé komunikace (pop3s).
+    -S naváže nešifrované spojení se serverem a pomocí příkazu STLS přejde na šifrovanou variantu protokolu.
+    -c <certfile> definuje soubor s certifikáty, který se použije pro ověření platnosti certifikátu SSL/TLS předloženého serverem.
+    -C <certaddr> určuje adresář, ve kterém se vyhledávají certifikáty, které se použijí pro ověření platnosti certifikátu SSL/TLS předloženého serverem.
+    -d po stažení se zprávy odstraní ze serveru.
+    -n stažení pouze nových zpráv.
+    -a <auth_file> umístění souboru s přihlašovacíma údajemi.
+    -o <out_dir> specifikuje výstupní adresář <out_dir>, do kterého program stažené zprávy ukládá.
+
+požadované knihovny:
+iostream    --práce se vstupně/výstupními streamy
+fstream     --práce se souborovými streamy
+string      --knihova pro práci z řetězci
+regex       --knihova pro práci z regulárními výrazi nad řetězci
+unistd.h    --v programu využívána pro získávání informací o souborech/složkách
+
+sys/
+    |stat.h --v programu využívána pro získávání informací o souborech/složkách
+
+openssl/
+    |bio.h  --umožňuje snadnější režiji nad kommunikací mezi servrem
+    |ssl.h  --umožńuje zabezpečení komunikace
+    |err.h  --logy chyb knihovny openssl
+
