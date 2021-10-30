@@ -29,7 +29,7 @@ popClient::popClient(int argc, char **argv)
 			exit(0);
 		}
 		else
-			server.assign(argv[1]);
+			server=argv[1];
 	}
 
 	for(int i=2;i<argc;i++)
@@ -42,17 +42,17 @@ popClient::popClient(int argc, char **argv)
 		else if(!strcmp(argv[i],"-C"))
 		{
 			flagC=true;
-			(++i)<argc?certFolder.assign(argv[i]):throw invalid_argument("Chybí složka z certifikáty za argumentem -C");
+			(++i)<argc?certFolder=argv[i]:throw invalid_argument("Chybí složka z certifikáty za argumentem -C");
 		}
 		else if(!strcmp(argv[i],"-a"))
 		{
 			flagA=true;
-			(++i)<argc?loginFile.assign(argv[i]):throw invalid_argument("Chybí soubor s přihlašovacími údaji za argumentem -a");
+			(++i)<argc?loginFile=argv[i]:throw invalid_argument("Chybí soubor s přihlašovacími údaji za argumentem -a");
 		}
 		else if(!strcmp(argv[i],"-o"))
 		{
 			flagO=true;
-			(++i)<argc?outDir.assign(argv[i]):throw invalid_argument("Chybí složka do které se má nahrát výstup za argumentem -o");
+			(++i)<argc?outDir=argv[i]:throw invalid_argument("Chybí složka do které se má nahrát výstup za argumentem -o");
 		}
 		else if((!strcmp(argv[i],"-T"))||(!strcmp(argv[i],"-S")))
 		{
@@ -66,7 +66,7 @@ popClient::popClient(int argc, char **argv)
 		else if(!strcmp(argv[i],"-c"))
 		{
 			flagc=true;
-			(++i)<argc?certFile.assign(argv[i]):throw invalid_argument("Chybí soubor s certiikáty za parametrem -c");
+			(++i)<argc?certFile=argv[i]:throw invalid_argument("Chybí soubor s certiikáty za parametrem -c");
 		}
 		else if(!strcmp(argv[i],"-n"))
 			flagN=true;
@@ -79,29 +79,32 @@ popClient::popClient(int argc, char **argv)
 		throw invalid_argument("Chybí některý z povinných argumentů");
 	if(!flagP)
 	{
-		if(flagT||flagS)
-			port="993";   //maybe
+		if(flagT)
+			port="995";   	//defalutní port pro navázání spop3 komunikace
 		else
-			port="110";
-
+			port="110";		//defalutní port pro navázání pop3 komunikace
 	}
-	init();
 }
+
+void popClient::checkHello()
+{
+	BIO_read(cbio, buffer, buffSize);
+	if (!regex_search (buffer, regex("^[+]OK POP3")))
+		throw runtime_error("Chyba při komunikaci se serverem-wrong hallo answer(maybe the server is not pop3 type)");
+}
+
 
 void popClient::logIn()
 {
-	BIO_read(cbio, buffer, buffSize);
-
-	if (!regex_search (buffer, regex("^[+]OK POP3")))
-		throw std::runtime_error("Chyba při komunikaci se serverem");
-
+	if(!flagS)	//hello paket byl již přijat v případě přepnutí do zabezpečené komunikace
+		checkHello();
 	
 	BIO_puts(cbio,("user "+login+"\r\n").c_str()); 	//zadání loginu
 	BIO_read(cbio, buffer, buffSize);
 
 
 	if (!regex_search (buffer, regex("^[+]OK")))
-		throw std::runtime_error("Chyba při komunikaci se serverem");
+		throw runtime_error("Chyba při komunikaci se serverem");
 
 
 	BIO_puts(cbio,("pass "+password+"\r\n").c_str());	//zadání hesla
@@ -111,28 +114,27 @@ void popClient::logIn()
 	{}
 	else if(regex_search (buffer, regex("^[-]ERR")))	//chyba
 	{
-		throw std::runtime_error("Invalid user name or password.");
+		throw runtime_error("Invalid user name or password");
 	}
 	else
-		throw std::runtime_error("Chyba při komunikaci se serverem");
+		throw runtime_error("Chyba při komunikaci se serverem");
 }
 
-void popClient::outDirInit()    //čerpáno z tohoto příspěvku: https://stackoverflow.com/a/18101042
+void popClient::outDirInit()
 {
 	struct stat info;
-	int statRC = stat( outDir.c_str(), &info );
-	if( statRC != 0 )
+	if(stat( outDir.c_str(), &info ))
 	{
 		if (errno == ENOENT) 
 		{ 
 			if (mkdir(outDir.c_str(),0) != 0)
 			{
-				throw std::runtime_error("Nelze vytvořit složku pro výstup");
+				throw runtime_error("Nelze vytvořit složku pro výstup");
 			}
 		} 
 		else if (errno == ENOTDIR) 
 		{ 
-			throw std::runtime_error("Nelze přistoupit ke výstupní složce-něco v cestě není složka nebo nemáte dostatečné oprávnění pro přístup do této složky");
+			throw runtime_error("Nelze přistoupit ke výstupní složce-něco v cestě není složka nebo nemáte dostatečné oprávnění pro přístup do této složky");
 		} 
 	}
 }
@@ -153,7 +155,7 @@ void popClient::download()
 		{         
 			snprintf(buffer, buffSize, "DELE %d\r\n",i);	//požadavek na smazání zpávy s číslem i
 			BIO_puts(cbio,buffer);		
-			BIO_read(cbio,buffer,buffSize);	//zahození odpovědi
+			BIO_read(cbio,buffer,buffSize);	//zahození odpovědi serveru
 		}
 	}
 	BIO_puts(cbio,"QUIT\r\n");	//opuštění relace
@@ -161,7 +163,7 @@ void popClient::download()
 
 string popClient::downloadMessege()
 {
-	string wholeMessege;
+	string wholeMessege;	
 	string end="\r\n.\r\n";
 	do
 	{
@@ -174,14 +176,16 @@ string popClient::downloadMessege()
 void popClient::writeResults()
 {
 	cout << "Staženo " << downCounter;
-	if(flagN){cout << " nových";}
+	if(flagN)
+		cout << " nových";
 	cout << " zpráv.\n";
 }
 
-inline bool ends_with(std::string const & value, std::string const & ending) // funkce převzata z: https://stackoverflow.com/a/2072890
+inline bool ends_with(string const & value, string const & ending) // funkce převzata z: https://stackoverflow.com/a/2072890
 {
-	if (ending.size() > value.size()) return false;
-	return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+	if (ending.size() > value.size()) 
+		return false;
+	return equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
 void popClient::parseMessege(string messege)
@@ -189,9 +193,9 @@ void popClient::parseMessege(string messege)
 	string name;
 	smatch m; 
 
-	std::istringstream iss(messege);
+	istringstream iss(messege);
 
-	for (std::string line; std::getline(iss, line);)    //iterátor jsem získal na: https://stackoverflow.com/a/12514641
+	for (string line; getline(iss, line);)    
 	{
 		if (regex_search (line,m, regex("^Message-ID: *<[!-~]*>")))		//získání unikátního identifikátor z emailu->jméno souboru
 		{
@@ -207,39 +211,39 @@ void popClient::parseMessege(string messege)
 
 	if(flagN) 
 	{
-		if( access( path.c_str(), F_OK ) == 0 ) //pokud záznam existuje, neukládámeho znovu
+		if( access( path.c_str(), F_OK ) == 0 ) 		//pokud záznam existuje, neukládáme ho znovu
 			return;        
 	}
 
 	ofstream target(path.c_str());
 	if (!target.is_open())
 	{
-		cerr<<"Soubor: "<<path<<" nelze otevřít pro zápis, pokračuji v práci.";
+		cerr<<"Soubor: "<<path<<" nelze otevřít pro zápis, pokračuji v práci.\n";
 		return;
 	}
-	messege.erase(0, messege.find("\n") + 1);//smazání prvního řádku "+ok ...."
-	target<<messege;	//nahrátí zprávy do souboru
+	messege.erase(0, messege.find("\n") + 1);			//smazání prvního řádku "+ok ...."
+	messege.erase(messege.length()-5,messege.length());	//smazání ukončující sekvence
+	target<<messege;									//nahrátí zprávy do souboru
 	target.close();
 	downCounter++;
 }
 
 int popClient::getMesCount()
 {
-	BIO_puts(cbio,"STAT\r\n");	//požadavek na výpis počtu zpráv
+	BIO_puts(cbio,"STAT\r\n");		//požadavek na výpis počtu zpráv
 	BIO_read(cbio, buffer, buffSize);
 
 	if (regex_search (buffer, regex("^[+]OK [0-9]+ [0-9]+")))
 	{
-		string aux;
-		aux.assign(buffer);
+		string aux=buffer;
 		smatch m; 
 		if(regex_search(aux, m, regex("[0-9]+")))
 			return stoi(m[0]);
 		else
-			throw std::runtime_error("Chyba při komunikaci se serverem");
+			throw runtime_error("Chyba při komunikaci se serverem");
 	}
 	else
-		throw std::runtime_error("Chyba při komunikaci se serverem");
+		throw runtime_error("Chyba při komunikaci se serverem");
 	return -1;
 }
 
@@ -254,109 +258,104 @@ void popClient::openSSLinit()
 {
 	SSL_load_error_strings();
 	ERR_load_crypto_strings();
-
 	OpenSSL_add_all_algorithms();
 	SSL_library_init();
 }
 
 void popClient::estConnection()
 {
-	if(flagS)
-	{
+	if(flagT)
 		secureConnet();
-	}
-	else if(flagT)
+	else 
 	{
-		nonSecureConnet();
-		switchToSecure();
+		if(flagS)
+		{
+			nonSecureConnet();
+			switchToSecure();
+		}
+		else
+			nonSecureConnet();
+	}
+}
+
+SSL_CTX * popClient::loadCetificates()
+{
+	SSL_CTX *ctx=SSL_CTX_new(SSLv23_client_method());
+	if (flagc) 
+	{
+		if(!SSL_CTX_load_verify_locations(ctx, certFile.c_str(), NULL))		//načtení ze soboru
+			throw runtime_error("Nelze načíst soubor s certifikáty");
+	}
+	else if (flagC) 
+	{
+		if(!SSL_CTX_load_verify_locations(ctx, NULL, certFolder.c_str()))	//načtení ze složky
+			throw runtime_error("Nelze načíst složku s certifikáty"); 
 	}
 	else
-	{
-		nonSecureConnet();
-	} 
+		SSL_CTX_set_default_verify_paths(ctx);
+	return ctx;
 }
 
 void popClient::nonSecureConnet()
 {
 	cbio = BIO_new_connect((server+":"+port).c_str());
 	if (BIO_do_connect(cbio) <= 0) {
-		throw std::runtime_error("Server je nedostupný");
+		throw runtime_error("Server je nedostupný");
 	}
 }
 
 void popClient::switchToSecure()
 {
-	//todo
+	checkHello();
+
+	BIO_puts(cbio,"STLS\r\n");	//požadavek na přepnutí do šifrované komunikace
+	BIO_read(cbio, buffer, buffSize);
+	if (!regex_search (buffer, regex("^[+]OK")))
+		throw runtime_error("Chyba při komunikaci se serverem-server pravděpodobně nepodporuje STLS příkaz");
+	
+	SSL_CTX *ctx=loadCetificates();
+	BIO *sslB;
+	if ((sslB = BIO_new_ssl(ctx, 1)) == NULL)
+        throw runtime_error("Chyba při inicializaci ssl");
+	if ((cbio = BIO_push(sslB, cbio)) == NULL)	//přepnutí do šifrované komunikace
+        throw runtime_error("Běhová chyba: nepodařilo se reinicializovat soket pro šifrovanou komunikaci");
+	
+	if (BIO_do_connect(cbio) <= 0) 	//"přepojení" na šifrovanou komunikaci
+		throw runtime_error("Server je nedostupný");
+
+	SSL *ssl;
+	BIO_get_ssl(cbio, &ssl);
+	SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+	if (ssl == NULL) 
+		runtime_error("Nepodařilo se navázat spojení se serverem");
+
+	if(SSL_get_verify_result(ssl) != X509_V_OK)
+		throw runtime_error("Ověření platnosti certifikátu se nezdařilo");
 }
 
 void popClient::secureConnet()
 {
-	BIO *out;
-	int len;
-	SSL_CTX *ctx;
-	SSL *ssl;
-
-	ctx = SSL_CTX_new(SSLv23_client_method());
-
-	if (flagc) 
-	{
-		if(!SSL_CTX_load_verify_locations(ctx, certFile.c_str(), NULL))
-			throw std::runtime_error("Nelze načíst soubor s certifikáty");
-	}
-	else if (flagC) 
-	{
-		if(!SSL_CTX_load_verify_locations(ctx, NULL, certFolder.c_str()))
-			throw std::runtime_error("Nelze načíst složku s certifikáty"); 
-	}
-	else
-		SSL_CTX_set_default_verify_paths(ctx);
-
+	SSL_CTX *ctx=loadCetificates();
 	cbio = BIO_new_ssl_connect(ctx);
-	BIO_get_ssl(cbio, &ssl);
-	if (ssl == NULL) {
-		fprintf(stderr, "Can't locate SSL pointer\n");
-		ERR_print_errors_fp(stderr);
-		cleanUp();
-		exit(1);
-	}
 
-	/* Don't want any retries */
+	SSL *ssl;
+	BIO_get_ssl(cbio, &ssl);
+	if (ssl == NULL) 
+		runtime_error("Nepodařilo se navázat spojení se serverem");
 	SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
 
-	/* XXX We might want to do other things with ssl here */
-
-	/* An empty host part means the loopback address */
 	BIO_set_conn_hostname(cbio, (server+":"+port).c_str());
+	if (BIO_do_connect(cbio) <= 0) 
+		throw runtime_error("Nepodařilo se navázat spojení se serverem");
 
-	out = BIO_new_fp(stdout, BIO_NOCLOSE);
-	if (BIO_do_connect(cbio) <= 0) {
-		fprintf(stderr, "Error connecting to server\n");
-		ERR_print_errors_fp(stderr);
-		cleanUp();
-		exit(1);
-	}
-	if (BIO_do_handshake(cbio) <= 0) {
-		fprintf(stderr, "Error establishing SSL connection\n");
-		ERR_print_errors_fp(stderr);
-		cleanUp();
-		exit(1);
-	}
-
-	/* XXX Could examine ssl here to get connection info */
-
-	BIO_puts(cbio, "GET / HTTP/1.0\n\n");
-	for ( ; ; ) {
-		len = BIO_read(cbio, buffer, buffSize);
-		if (len <= 0)
-			break;
-		BIO_write(out, buffer, len);
-	}
-	exit(0);
+	if(SSL_get_verify_result(ssl) != X509_V_OK)
+		throw runtime_error("Ověření platnosti certifikátu se nezdařilo");
 }
 
 void popClient::cleanUp()
 {
-	BIO_free_all(cbio);
+	if(cbio)
+		BIO_free_all(cbio);
 }
 
 void popClient::init()
@@ -370,7 +369,7 @@ void popClient::getLoginData()
 	ifstream  file (loginFile);
 	if (file.is_open())
 	{
-		std::string aux;
+		string aux;
 		getline(file,aux);
 		if (regex_match (aux, regex("^username *= *[!-~]* *$")))
 		{
@@ -381,7 +380,7 @@ void popClient::getLoginData()
 			login=m[0];
 		}
 		else
-			throw std::runtime_error("Soubor s přihlašujicími údaji je ve špatném formátu nebo je poškozený");
+			throw runtime_error("Soubor s přihlašujicími údaji je ve špatném formátu nebo je poškozený");
 		getline(file,aux);
 		if (regex_match (aux, regex("^password *= *[!-~]* *$")))
 		{
@@ -392,10 +391,10 @@ void popClient::getLoginData()
 			password=m[0];
 		}
 		else
-			throw std::runtime_error("Soubor s přihlašujicími údaji je ve špatném formátu nebo je poškozený");
+			throw runtime_error("Soubor s přihlašujicími údaji je ve špatném formátu nebo je poškozený");
 	}
 	else 
-		throw std::runtime_error("Soubor s přihlašujicími údaji nelze otevřít");
+		throw runtime_error("Soubor s přihlašujicími údaji nelze otevřít");
 }
 
 popClient::~popClient()

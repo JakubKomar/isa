@@ -8,13 +8,12 @@ ZIP=xkomar33.zip
 CC=g++ 
 RM=rm -f
 SRC=$(wildcard src/*.cpp)
-PATHS=$(addprefix ../, $(SRC))
 .PHONY: all build run pack clean
 
 all: build
 
 build: 
-	$(CC) $(CFLAGS) -o $(BIN) $(PATHS) -lssl -lcrypto 
+	$(CC) $(CFLAGS) -o $(BIN) $(SRC) -lssl -lcrypto 
 
 pack: clean
 	cd src && \

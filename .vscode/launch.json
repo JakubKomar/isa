@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/popcl",
-            "args": ["mail.local","-o","dwDir","-a","./../login.txt","-p","110","-S"],
+            "args": ["mail.local","-o","dwDir","-a","./../login.txt","-p","110"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

@@ -57,15 +57,10 @@ private:
     int buffSize=sizeof(buffer);
 
     //rozhraní pro komunikaci se serverem
-    BIO *cbio;
+    BIO *cbio=NULL;
 
     //počítadlo stažených souborů
     int downCounter=0;
-
-    /**
-     * @brief inicializační funkce před hlavním během programu
-     */ 
-    void init();
 
     /**
      * @brief inicializace vstupní složky-pokud neexistuje, vytvoříse
@@ -87,6 +82,12 @@ private:
      */ 
     void nonSecureConnet();
 
+     /**
+     * @brief načte certifikáty a konfigurci ssl
+     * @return nosič informací ssl
+     */ 
+    SSL_CTX * loadCetificates();
+
     /**
      * @brief Navázání zabezpečeného spojení
      */ 
@@ -94,8 +95,15 @@ private:
 
     /**
      * @brief Navázání nezabezpečeného spojení a přepnutí do šifrovaného
+     * @details sekce napsána za pomocí dokumentace: https://www.openssl.org/docs/man1.1.0/man3/BIO_new_ssl_connect.html
      */ 
     void switchToSecure();
+
+    /**
+     * @brief Zkontroluje uvítací zprávu ze serveru
+     * @details sekce napsána za pomocí dokumentace: https://www.openssl.org/docs/man1.1.0/man3/BIO_new_ssl_connect.html
+     */ 
+    void checkHello();
 
     /**
      * @brief Autentizace na serveru pomocí loginu a hesla
@@ -136,8 +144,14 @@ public:
      */ 
     ~popClient();
 
+
     /**
-     * @brief Navázání spojení se servrem
+     * @brief inicializační funkce před hlavním během programu
+     */ 
+    void init();
+
+    /**
+     * @brief Navázání spojení se serverem
      */ 
     void estConnection();
 

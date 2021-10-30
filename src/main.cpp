@@ -7,24 +7,29 @@
 
 int main(int argc, char *argv[]) 
 {
+    auto retCode=0;
     try
     {
         popClient client(argc,argv);
-        client.estConnection();
-        client.run();
-        client.writeResults();
-        client.cleanUp();
+        client.init();
+        try
+        {
+            client.estConnection();
+            client.run();
+            client.writeResults();
+        }
+        catch (exception & e)   
+        {
+            cout << "Běhová chyba: "<< e.what() << ".\n";
+            retCode=2;
+        }
+        client.cleanUp();   
     }
     catch(invalid_argument & e)
     {
-        cerr << e.what() << "\nnevalidní argument, skuste: popc -h" << '\n';
-        return 1;
+        cerr << e.what() << "Nevalidní argument, zkuste: popc -h" << ".\n";
+        retCode=1;
     }
-    catch (exception & e) 
-    {
-        cout << "Runtime err: "<< e.what() << '\n';
-        return 2;
-    }
-    
-    return 0;
+
+    return retCode;
 }

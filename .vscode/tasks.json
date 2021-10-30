@@ -9,9 +9,9 @@
                 "-g",
                 "*.cpp",
                 "-o",
-                "${fileDirname}/popcl"
-
-                ,"-lssl" ,"-lcrypto"
+                "${fileDirname}/popcl",
+                "-lssl" ,
+                "-lcrypto"
             ],
             "options": {
                 "cwd": "${fileDirname}"

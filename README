@@ -4,7 +4,7 @@ autor: Jakub Komárek (xkomar33)
 použití:
 popcl <server> [-p <port>] [-T|-S [-c <certfile>] [-C <certaddr>]] [-d] [-n] -a <auth_file> -o <out_dir>
     <server> IP adresa/doménové jméno serveru.
-    -p <port> specifikuje číslo portuserveru. 
+    -p <port> specifikuje číslo portu serveru. 
     -T zapíná šifrování celé komunikace (pop3s).
     -S naváže nešifrované spojení se serverem a pomocí příkazu STLS přejde na šifrovanou variantu protokolu.
     -c <certfile> definuje soubor s certifikáty, který se použije pro ověření platnosti certifikátu SSL/TLS předloženého serverem.
@@ -12,7 +12,7 @@ popcl <server> [-p <port>] [-T|-S [-c <certfile>] [-C <certaddr>]] [-d] [-n] -a 
     -d po stažení se zprávy odstraní ze serveru.
     -n stažení pouze nových zpráv.
     -a <auth_file> umístění souboru s přihlašovacíma údajemi.
-    -o <out_dir> specifikuje výstupní adresář <out_dir>, do kterého program stažené zprávy ukládá.
+    -o <out_dir> specifikuje výstupní adresář, do kterého program stažené zprávy ukládá.
 
 požadované knihovny:
 iostream    --práce se vstupně/výstupními streamy
