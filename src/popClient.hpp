@@ -132,6 +132,12 @@ private:
      * @param messege celá zpráva
      */ 
     void parseMessege(string messege);
+
+    /**
+     * @brief generuje v rámci výstupní složky unikátní náhodné jméno pro soubor neobsahující massege id
+     * @return náhodné jméno
+     */ 
+    string genName();
 public:
 
     /**

@@ -89,7 +89,7 @@ popClient::popClient(int argc, char **argv)
 void popClient::checkHello()
 {
 	BIO_read(cbio, buffer, buffSize);
-	if (!regex_search (buffer, regex("^[+]OK POP3")))
+	if (!regex_search (buffer, regex("^[+]OK",regex_constants::icase)))
 		throw runtime_error("Chyba při komunikaci se serverem-wrong hallo answer(maybe the server is not pop3 type)");
 }
 
@@ -103,16 +103,16 @@ void popClient::logIn()
 	BIO_read(cbio, buffer, buffSize);
 
 
-	if (!regex_search (buffer, regex("^[+]OK")))
+	if (!regex_search (buffer, regex("^[+]OK",regex_constants::icase)))
 		throw runtime_error("Chyba při komunikaci se serverem");
 
 
 	BIO_puts(cbio,("pass "+password+"\r\n").c_str());	//zadání hesla
 	BIO_read(cbio, buffer, buffSize);
 
-	if (regex_search (buffer, regex("^[+]OK")))		//přihlášení proběhlo úspěšně
+	if (regex_search (buffer, regex("^[+]OK",regex_constants::icase)))		//přihlášení proběhlo úspěšně
 	{}
-	else if(regex_search (buffer, regex("^[-]ERR")))	//chyba
+	else if(regex_search (buffer, regex("^[-]ERR",regex_constants::icase)))	//chyba
 	{
 		throw runtime_error("Invalid user name or password");
 	}
@@ -190,14 +190,14 @@ inline bool ends_with(string const & value, string const & ending) // funkce př
 
 void popClient::parseMessege(string messege)
 {
-	string name;
+	string name="";
 	smatch m; 
 
 	istringstream iss(messege);
 
 	for (string line; getline(iss, line);)    
 	{
-		if (regex_search (line,m, regex("^Message-ID: *<[!-~]*>")))		//získání unikátního identifikátor z emailu->jméno souboru
+		if (regex_search (line,m, regex("^Message-ID: *<[!-~]*>",regex_constants::icase)))		//získání unikátního identifikátor z emailu->jméno souboru
 		{
 			name=m[0];
 			regex_search(name, m, regex("<[!-~]*>")); 
@@ -206,8 +206,10 @@ void popClient::parseMessege(string messege)
 			break;
 		}
 	}
+	if(name=="")	//massege id nenalezeno->generování náhodného jména
+		name=genName();
 
-	string path=outDir+'/'+name;
+	string path=outDir+'/'+name+".eml";
 
 	if(flagN) 
 	{
@@ -219,6 +221,7 @@ void popClient::parseMessege(string messege)
 	if (!target.is_open())
 	{
 		cerr<<"Soubor: "<<path<<" nelze otevřít pro zápis, pokračuji v práci.\n";
+		cerr<<messege;
 		return;
 	}
 	messege.erase(0, messege.find("\n") + 1);			//smazání prvního řádku "+ok ...."
@@ -228,12 +231,24 @@ void popClient::parseMessege(string messege)
 	downCounter++;
 }
 
+string popClient::genName()
+{
+	string path;
+	string name;
+	do{
+		unsigned long int num=rand();
+		name=to_string(num);
+		path=outDir+'/'+name+".eml";
+	}while (access( path.c_str(), F_OK ) == 0);
+	return name;
+}
+
 int popClient::getMesCount()
 {
 	BIO_puts(cbio,"STAT\r\n");		//požadavek na výpis počtu zpráv
 	BIO_read(cbio, buffer, buffSize);
 
-	if (regex_search (buffer, regex("^[+]OK [0-9]+ [0-9]+")))
+	if (regex_search (buffer, regex("^[+]OK [0-9]+ [0-9]+",regex_constants::icase)))
 	{
 		string aux=buffer;
 		smatch m; 
@@ -310,7 +325,7 @@ void popClient::switchToSecure()
 
 	BIO_puts(cbio,"STLS\r\n");	//požadavek na přepnutí do šifrované komunikace
 	BIO_read(cbio, buffer, buffSize);
-	if (!regex_search (buffer, regex("^[+]OK")))
+	if (!regex_search (buffer, regex("^[+]OK",regex_constants::icase)))
 		throw runtime_error("Chyba při komunikaci se serverem-server pravděpodobně nepodporuje STLS příkaz");
 	
 	SSL_CTX *ctx=loadCetificates();
@@ -371,7 +386,7 @@ void popClient::getLoginData()
 	{
 		string aux;
 		getline(file,aux);
-		if (regex_match (aux, regex("^username *= *[!-~]* *$")))
+		if (regex_match (aux, regex("^username *= *[!-~]* *$",regex_constants::icase)))
 		{
 			smatch m; 
 			regex_search(aux, m, regex("[!-~]* *$")); 
@@ -382,7 +397,7 @@ void popClient::getLoginData()
 		else
 			throw runtime_error("Soubor s přihlašujicími údaji je ve špatném formátu nebo je poškozený");
 		getline(file,aux);
-		if (regex_match (aux, regex("^password *= *[!-~]* *$")))
+		if (regex_match (aux, regex("^password *= *[!-~]* *$",regex_constants::icase)))
 		{
 			smatch m; 
 			regex_search(aux, m, regex("[!-~]* *$")); 
