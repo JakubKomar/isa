@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     }
     catch(invalid_argument & e)
     {
-        cerr << e.what() << "Nevalidní argument, zkuste: popc -h" << ".\n";
+        cerr << "Nevalidní argument("<<e.what()<<"), zkuste: popc -h" << ".\n";
         retCode=1;
     }
 

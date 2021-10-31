@@ -11,8 +11,12 @@ popcl <server> [-p <port>] [-T|-S [-c <certfile>] [-C <certaddr>]] [-d] [-n] -a 
     -C <certaddr> určuje adresář, ve kterém se vyhledávají certifikáty, které se použijí pro ověření platnosti certifikátu SSL/TLS předloženého serverem.
     -d po stažení se zprávy odstraní ze serveru.
     -n stažení pouze nových zpráv.
-    -a <auth_file> umístění souboru s přihlašovacíma údajemi.
+    -a <auth_file> umístění souboru s přihlašovacími údaji.
     -o <out_dir> specifikuje výstupní adresář, do kterého program stažené zprávy ukládá.
+
+příklad použití:
+    $ popcl 10.10.10.1 -p 1234 -T -n -o maildir -a cred
+    $ popcl example.com -o maildir -a cred
 
 požadované knihovny:
 iostream    --práce se vstupně/výstupními streamy

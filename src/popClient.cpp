@@ -12,7 +12,7 @@ popClient::popClient(int argc, char **argv)
 		throw invalid_argument("Nebyla zadána adresa serveru");
 	else
 	{
-		if(!strcmp(argv[1],"-h"))
+		if((!strcmp(argv[1],"-h"))||(!strcmp(argv[1],"--help")))
 		{
 			cout<<"Popcl je program pro stahování emailových zpráv z POP3 serveru.\n\n"
 				"popcl <server> [-p <port>] [-T|-S [-c <certfile>] [-C <certaddr>]] [-d] [-n] -a <auth_file> -o <out_dir>\n\n"
@@ -24,7 +24,7 @@ popClient::popClient(int argc, char **argv)
 				"-C <certaddr> určuje adresář, ve kterém se vyhledávají certifikáty, které se použijí pro ověření platnosti certifikátu SSL/TLS předloženého serverem.\n"
 				"-d po stažení se zprávy odstraní ze serveru.\n"
 				"-n stažení pouze nových zpráv.\n"
-				"-a <auth_file> umístění souboru s přihlašovacíma údajemi.\n"
+				"-a <auth_file> umístění souboru s přihlašovacíma údaji.\n"
 				"-o <out_dir> specifikuje výstupní adresář <out_dir>, do kterého program stažené zprávy ukládá.\n";
 			exit(0);
 		}
@@ -149,9 +149,9 @@ void popClient::download()
 		BIO_puts(cbio,buffer);
 
 		string messege=downloadMessege();
-		parseMessege(messege);
+		bool saved=parseMessege(messege);
 
-		if(flagD)
+		if(flagD&&saved)	//mažou se pouze úspěšně uložené zprávy
 		{         
 			snprintf(buffer, buffSize, "DELE %d\r\n",i);	//požadavek na smazání zpávy s číslem i
 			BIO_puts(cbio,buffer);		
@@ -188,7 +188,7 @@ inline bool ends_with(string const & value, string const & ending) // funkce př
 	return equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
-void popClient::parseMessege(string messege)
+bool popClient::parseMessege(string messege)
 {
 	string name="";
 	smatch m; 
@@ -206,7 +206,7 @@ void popClient::parseMessege(string messege)
 			break;
 		}
 	}
-	if(name=="")	//massege id nenalezeno->generování náhodného jména
+	if(name.length()<4)	//massege id nenalezeno/nebo je příliž krátké(pravděpodobně nevalidní)->generování náhodného jména
 		name=genName();
 
 	string path=outDir+'/'+name+".eml";
@@ -214,21 +214,21 @@ void popClient::parseMessege(string messege)
 	if(flagN) 
 	{
 		if( access( path.c_str(), F_OK ) == 0 ) 		//pokud záznam existuje, neukládáme ho znovu
-			return;        
+			return false;        
 	}
 
 	ofstream target(path.c_str());
 	if (!target.is_open())
 	{
 		cerr<<"Soubor: "<<path<<" nelze otevřít pro zápis, pokračuji v práci.\n";
-		cerr<<messege;
-		return;
+		return false;
 	}
 	messege.erase(0, messege.find("\n") + 1);			//smazání prvního řádku "+ok ...."
 	messege.erase(messege.length()-5,messege.length());	//smazání ukončující sekvence
 	target<<messege;									//nahrátí zprávy do souboru
 	target.close();
 	downCounter++;
+	return true;
 }
 
 string popClient::genName()
@@ -395,7 +395,7 @@ void popClient::getLoginData()
 			login=m[0];
 		}
 		else
-			throw runtime_error("Soubor s přihlašujicími údaji je ve špatném formátu nebo je poškozený");
+			throw invalid_argument("Soubor s přihlašujicími údaji je ve špatném formátu nebo je poškozený");
 		getline(file,aux);
 		if (regex_match (aux, regex("^password *= *[!-~]* *$",regex_constants::icase)))
 		{
@@ -406,10 +406,10 @@ void popClient::getLoginData()
 			password=m[0];
 		}
 		else
-			throw runtime_error("Soubor s přihlašujicími údaji je ve špatném formátu nebo je poškozený");
+			throw invalid_argument("Soubor s přihlašujicími údaji je ve špatném formátu nebo je poškozený");
 	}
 	else 
-		throw runtime_error("Soubor s přihlašujicími údaji nelze otevřít");
+		throw invalid_argument("Soubor s přihlašujicími údaji nelze otevřít");
 }
 
 popClient::~popClient()

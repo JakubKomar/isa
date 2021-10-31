@@ -130,8 +130,9 @@ private:
     /**
      * @brief zpracování zprávy a uložení do výstupní složky
      * @param messege celá zpráva
+     * @return true-zprava úspěšně uložena,false-nebyla uložena
      */ 
-    void parseMessege(string messege);
+    bool parseMessege(string messege);
 
     /**
      * @brief generuje v rámci výstupní složky unikátní náhodné jméno pro soubor neobsahující massege id

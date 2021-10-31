@@ -7,7 +7,7 @@ BIN=popcl
 ZIP=xkomar33.zip
 CC=g++ 
 RM=rm -f
-SRC=$(wildcard src/*.cpp)
+SRC=src/main.cpp src/popClient.cpp 
 .PHONY: all build run pack clean
 
 all: build
